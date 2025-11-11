@@ -172,7 +172,7 @@ def build_feature_vector(asn_id, job_id, df_asn_data, df_jab_data, le_pendidikan
     return feature_vector
 
 # --- Aplikasi Streamlit ---
-st.title("🚀 iNDTalent-Indonesia Digital Talent Management")
+st.title("🚀 INDTalent-Indonesia Digital Talent Management")
 st.markdown("""
 Aplikasi ini membantu dalam melihat ranking kandidat untuk suatu jabatan dan merekomendasikan jabatan untuk seorang kandidat, 
 dilengkapi dengan penjelasan faktor-faktor penentu menggunakan SHAP.
