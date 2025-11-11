@@ -8,3 +8,4 @@ gensim
 joblib
 matplotlib
 networkx
+google-generativeai
