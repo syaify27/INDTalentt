@@ -1,0 +1,10 @@
+streamlit
+pandas
+numpy
+scikit-learn
+xgboost==1.7.6
+shap==0.42.1
+gensim
+joblib
+matplotlib
+networkx
