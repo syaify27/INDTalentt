@@ -229,7 +229,7 @@ with st.sidebar:
     st.info("Aplikasi ini membantu dalam pengambilan keputusan terkait manajemen talenta ASN.")
 
 # --- Main App ---
-st.title("💼 Sistem Manajemen Talenta ASN")
+st.title("💼 Indonesia Digital Talent Management")
 st.markdown("""
 Aplikasi ini dirancang untuk membantu pengelolaan talenta Aparatur Sipil Negara (ASN)
 dengan memberikan **ranking kandidat** terbaik untuk suatu jabatan dan **rekomendasi jabatan**
