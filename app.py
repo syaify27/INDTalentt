@@ -11,9 +11,26 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from gensim.models import Word2Vec # Digunakan untuk tipe, bukan load model utuh
 import matplotlib.patches as mpatches
 
-# --- Konfigurasi Streamlit ---
-st.set_page_config(layout="wide", page_title="Talent Management App",
-                   initial_sidebar_state="expanded")
+# --- Konfigurasi Halaman Streamlit ---
+st.set_page_config(
+    page_title="Sistem Manajemen Talenta ASN",
+    page_icon="💼",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# --- Tema Kustom ---
+st.markdown('''
+<style>
+    .reportview-container {
+        margin-top: -2em;
+    }
+    #MainMenu {visibility: hidden;}
+    .stDeployButton {display:none;}
+    footer {visibility: hidden;}
+    #stDecoration {display:none;}
+</style>
+''', unsafe_allow_html=True)
 
 # --- Direktori Artifacts ---
 ARTIFACT_DIR = Path("artifacts")
@@ -25,11 +42,6 @@ if not ARTIFACT_DIR.exists():
 
 # --- Helper Functions ---
 def summarize_shap_values_new(shap_explanation, feature_row, model_predict_fn=None, top_pct=0.6):
-    """
-    shap_explanation: satu elemen dari shap.Explanation, i.e. shap_explanation[idx]
-    feature_row: pd.Series of original (preprocessed) features aligned with shap_explanation.feature_names
-    model_predict_fn: callable to get predicted score (optional)
-    """
     sv = np.array(shap_explanation.values)
     feat_names = shap_explanation.feature_names
     abs_vals = np.abs(sv)
@@ -204,22 +216,25 @@ def build_feature_vector(asn_id, job_id, df_asn_data, df_jab_data, le_pendidikan
     feature_vector = pd.Series(feature_dict)[model_feat_names]
     return feature_vector
 
-# --- Aplikasi Streamlit ---
+# --- Sidebar ---
+with st.sidebar:
+    st.image("https://www.streamlit.io/images/brand/streamlit-logo-secondary-colormark-darktext.png", width=200)
+    st.title("Menu Navigasi")
+    action = st.radio(
+        "Pilih Aksi:",
+        ("Ranking Kandidat", "Rekomendasi Jabatan"),
+        captions=("Peringkat kandidat untuk suatu jabatan", "Rekomendasi jabatan untuk seorang kandidat")
+    )
+    st.markdown("---")
+    st.info("Aplikasi ini membantu dalam pengambilan keputusan terkait manajemen talenta ASN.")
+
+# --- Main App ---
 st.title("💼 Sistem Manajemen Talenta ASN")
 st.markdown("""
-Aplikasi ini dirancang untuk membantu pengelolaan talenta Aparatur Sipil Negara (ASN) 
-dengan memberikan **ranking kandidat** terbaik untuk suatu jabatan dan **rekomendasi jabatan** 
-yang paling sesuai untuk seorang kandidat. Dilengkapi dengan **penjelasan faktor-faktor penentu (SHAP)** 
-dan visualisasi profil melalui **radar chart**, aplikasi ini mendukung pengambilan keputusan yang lebih informatif.
+Aplikasi ini dirancang untuk membantu pengelolaan talenta Aparatur Sipil Negara (ASN)
+dengan memberikan **ranking kandidat** terbaik untuk suatu jabatan dan **rekomendasi jabatan**
+yang paling sesuai untuk seorang kandidat.
 """)
-
-# Sidebar untuk navigasi atau input utama
-st.sidebar.header("Pilihan Aksi")
-action = st.sidebar.radio("Apa yang ingin Anda lakukan?", ("Ranking Kandidat", "Rekomendasi Jabatan"))
-
-st.sidebar.markdown("---")
-st.sidebar.info("Tips: Gunakan sidebar ini untuk memilih fitur utama aplikasi.")
-
 
 if action == "Ranking Kandidat":
     st.header("🏅 Ranking Kandidat untuk Jabatan Tertentu")
@@ -269,8 +284,7 @@ if action == "Ranking Kandidat":
         st.markdown("---")
         st.subheader("📊 Analisis Profil dan Penjelasan SHAP")
         
-        col_select_asn, col_radar_chart = st.columns([1,2])
-
+        col_select_asn, col_metric = st.columns([2,1])
         with col_select_asn:
             selected_asn_for_shap = st.selectbox(
                 "Pilih ASN dari ranking untuk melihat detail:",
@@ -278,50 +292,51 @@ if action == "Ranking Kandidat":
                 format_func=lambda x: f"{x} (Score: {df_ranking[df_ranking['id_asn']==x]['predicted_jobfit_score'].iloc[0]})",
                 key="ranking_asn_select"
             )
-            asn_details_row = df_asn[df_asn['id_asn'] == selected_asn_for_shap].iloc[0]
-            st.markdown(f"**Profil ASN: {selected_asn_for_shap}**")
-            st.write(f"Usia: {asn_details_row['usia']} thn")
-            st.write(f"Pendidikan: {asn_details_row['pendidikan']}")
-            st.write(f"Masa Kerja: {asn_details_row['masa_kerja']} thn")
-            st.write(f"Unit Kerja: {asn_details_row['unit_kerja']}")
+        
+        with col_metric:
+            score = df_ranking[df_ranking['id_asn']==selected_asn_for_shap]['predicted_jobfit_score'].iloc[0]
+            st.metric(label="Predicted Job Fit Score", value=f"{score:.2f}")
 
 
         if selected_asn_for_shap:
-            with col_radar_chart:
-                st.markdown("##### Perbandingan Profil ASN dan Jabatan (Radar Chart)")
-                # Data untuk ASN (kompetensi inti)
-                asn_radar_labels = ["Teknis", "Sosial", "Manajerial"]
-                asn_radar_values = np.array([asn_details_row['dim_teknis'], asn_details_row['dim_sosial'], asn_details_row['dim_manaj']])
-                # Data untuk Jabatan (bobot kompetensi)
-                job_radar_labels = ["Teknis", "Sosial", "Manajerial"]
-                # Bobot jabatan 0-1, kita skalakan ke 0-100 untuk perbandingan visual
-                job_radar_values = np.array([current_job_row['w_teknis']*100, current_job_row['w_sosial']*100, current_job_row['w_manaj']*100])
-                
-                # Gunakan max_val 100 karena kompetensi dan bobot sudah dalam skala 0-100 (setelah dikali 100)
-                fig_radar = create_radar_chart(asn_radar_labels, asn_radar_values, job_radar_values,
-                                               title=f"Profil {selected_asn_for_shap} vs {current_job_row['nama_jabatan']}",
-                                               max_val=100)
-                st.pyplot(fig_radar)
-                plt.close(fig_radar)
+            with st.expander("Lihat Analisis Detail"):
+                col_radar_chart, col_shap = st.columns(2)
+                with col_radar_chart:
+                    st.markdown("##### Perbandingan Profil ASN dan Jabatan (Radar Chart)")
+                    asn_details_row = df_asn[df_asn['id_asn'] == selected_asn_for_shap].iloc[0]
+                    # Data untuk ASN (kompetensi inti)
+                    asn_radar_labels = ["Teknis", "Sosial", "Manajerial"]
+                    asn_radar_values = np.array([asn_details_row['dim_teknis'], asn_details_row['dim_sosial'], asn_details_row['dim_manaj']])
+                    # Data untuk Jabatan (bobot kompetensi)
+                    job_radar_labels = ["Teknis", "Sosial", "Manajerial"]
+                    # Bobot jabatan 0-1, kita skalakan ke 0-100 untuk perbandingan visual
+                    job_radar_values = np.array([current_job_row['w_teknis']*100, current_job_row['w_sosial']*100, current_job_row['w_manaj']*100])
+                    
+                    # Gunakan max_val 100 karena kompetensi dan bobot sudah dalam skala 0-100 (setelah dikali 100)
+                    fig_radar = create_radar_chart(asn_radar_labels, asn_radar_values, job_radar_values,
+                                                   title=f"Profil {selected_asn_for_shap} vs {current_job_row['nama_jabatan']}",
+                                                   max_val=100)
+                    st.pyplot(fig_radar)
+                    plt.close(fig_radar)
 
-            st.markdown("---")
-            st.markdown("##### Penjelasan Faktor Pendorong Job Fit (SHAP)")
-            if explainer:
-                feat_vec_shap = build_feature_vector(selected_asn_for_shap, selected_job_id, df_asn, df_jab, le_pendidikan, embeddings, model_feature_names)
-                with st.spinner("Menghasilkan penjelasan SHAP..."):
-                    shap_values_obj = explainer(feat_vec_shap.to_frame().T)
-                
-                summary_text = summarize_shap_values_new(shap_values_obj[0], feat_vec_shap, model.predict)
-                st.info(summary_text)
-                
-                fig_waterfall, ax_waterfall = plt.subplots(figsize=(10, 6))
-                shap.plots.waterfall(shap_values_obj[0], show=False)
-                plt.tight_layout()
-                st.pyplot(fig_waterfall)
-                plt.close(fig_waterfall)
+                with col_shap:
+                    st.markdown("##### Penjelasan Faktor Pendorong Job Fit (SHAP)")
+                    if explainer:
+                        feat_vec_shap = build_feature_vector(selected_asn_for_shap, selected_job_id, df_asn, df_jab, le_pendidikan, embeddings, model_feature_names)
+                        with st.spinner("Menghasilkan penjelasan SHAP..."):
+                            shap_values_obj = explainer(feat_vec_shap.to_frame().T)
+                        
+                        summary_text = summarize_shap_values_new(shap_values_obj[0], feat_vec_shap, model.predict)
+                        st.info(summary_text)
+                        
+                        fig_waterfall, ax_waterfall = plt.subplots(figsize=(10, 6))
+                        shap.plots.waterfall(shap_values_obj[0], show=False)
+                        plt.tight_layout()
+                        st.pyplot(fig_waterfall)
+                        plt.close(fig_waterfall)
 
-            else:
-                st.warning("SHAP Explainer tidak tersedia. Tidak dapat menampilkan penjelasan.")
+                    else:
+                        st.warning("SHAP Explainer tidak tersedia. Tidak dapat menampilkan penjelasan.")
 
 
 elif action == "Rekomendasi Jabatan":
@@ -375,8 +390,7 @@ elif action == "Rekomendasi Jabatan":
         st.markdown("---")
         st.subheader("📊 Analisis Profil dan Penjelasan SHAP")
 
-        col_select_job_reco, col_radar_chart_reco = st.columns([1,2])
-
+        col_select_job_reco, col_metric_reco = st.columns([2,1])
         with col_select_job_reco:
             selected_job_for_shap = st.selectbox(
                 "Pilih Jabatan dari rekomendasi untuk melihat detail:",
@@ -384,42 +398,45 @@ elif action == "Rekomendasi Jabatan":
                 format_func=lambda x: f"{x} - {df_reco[df_reco['id_jabatan']==x]['nama_jabatan'].iloc[0]} (Score: {df_reco[df_reco['id_jabatan']==x]['predicted_jobfit_score'].iloc[0]})",
                 key="reco_job_select"
             )
-            job_details_row = df_jab[df_jab['id_jabatan'] == selected_job_for_shap].iloc[0]
-            st.markdown(f"**Detail Jabatan: {job_details_row['nama_jabatan']}**")
-            st.write(f"Unit Kerja yang Dibutuhkan: {job_details_row['unit_req']}")
-            st.write(f"Bobot Kompetensi: Teknis={job_details_row['w_teknis']:.2f}, Sosial={job_details_row['w_sosial']:.2f}, Manajerial={job_details_row['w_manaj']:.2f}")
+        
+        with col_metric_reco:
+            score = df_reco[df_reco['id_jabatan']==selected_job_for_shap]['predicted_jobfit_score'].iloc[0]
+            st.metric(label="Predicted Job Fit Score", value=f"{score:.2f}")
 
         if selected_job_for_shap:
-            with col_radar_chart_reco:
-                st.markdown("##### Perbandingan Profil ASN dan Jabatan (Radar Chart)")
-                # Data untuk ASN (kompetensi inti)
-                asn_radar_labels = ["Teknis", "Sosial", "Manajerial"]
-                asn_radar_values = np.array([current_asn_row['dim_teknis'], current_asn_row['dim_sosial'], current_asn_row['dim_manaj']])
-                # Data untuk Jabatan (bobot kompetensi)
-                job_radar_labels = ["Teknis", "Sosial", "Manajerial"]
-                job_radar_values = np.array([job_details_row['w_teknis']*100, job_details_row['w_sosial']*100, job_details_row['w_manaj']*100])
+            with st.expander("Lihat Analisis Detail"):
+                col_radar_chart_reco, col_shap_reco = st.columns(2)
+                with col_radar_chart_reco:
+                    st.markdown("##### Perbandingan Profil ASN dan Jabatan (Radar Chart)")
+                    job_details_row = df_jab[df_jab['id_jabatan'] == selected_job_for_shap].iloc[0]
+                    # Data untuk ASN (kompetensi inti)
+                    asn_radar_labels = ["Teknis", "Sosial", "Manajerial"]
+                    asn_radar_values = np.array([current_asn_row['dim_teknis'], current_asn_row['dim_sosial'], current_asn_row['dim_manaj']])
+                    # Data untuk Jabatan (bobot kompetensi)
+                    job_radar_labels = ["Teknis", "Sosial", "Manajerial"]
+                    job_radar_values = np.array([job_details_row['w_teknis']*100, job_details_row['w_sosial']*100, job_details_row['w_manaj']*100])
+                    
+                    fig_radar = create_radar_chart(asn_radar_labels, asn_radar_values, job_radar_values,
+                                                   title=f"Profil {selected_asn_id} vs {job_details_row['nama_jabatan']}",
+                                                   max_val=100)
+                    st.pyplot(fig_radar)
+                    plt.close(fig_radar)
                 
-                fig_radar = create_radar_chart(asn_radar_labels, asn_radar_values, job_radar_values,
-                                               title=f"Profil {selected_asn_id} vs {job_details_row['nama_jabatan']}",
-                                               max_val=100)
-                st.pyplot(fig_radar)
-                plt.close(fig_radar)
-            
-            st.markdown("---")
-            st.markdown("##### Penjelasan Faktor Pendorong Job Fit (SHAP)")
-            if explainer:
-                feat_vec_shap = build_feature_vector(selected_asn_id, selected_job_for_shap, df_asn, df_jab, le_pendidikan, embeddings, model_feature_names)
-                with st.spinner("Menghasilkan penjelasan SHAP..."):
-                    shap_values_obj = explainer(feat_vec_shap.to_frame().T)
-                
-                summary_text = summarize_shap_values_new(shap_values_obj[0], feat_vec_shap, model.predict)
-                st.info(summary_text)
-                
-                fig_waterfall, ax_waterfall = plt.subplots(figsize=(10, 6))
-                shap.plots.waterfall(shap_values_obj[0], show=False)
-                plt.tight_layout()
-                st.pyplot(fig_waterfall)
-                plt.close(fig_waterfall)
+                with col_shap_reco:
+                    st.markdown("##### Penjelasan Faktor Pendorong Job Fit (SHAP)")
+                    if explainer:
+                        feat_vec_shap = build_feature_vector(selected_asn_id, selected_job_for_shap, df_asn, df_jab, le_pendidikan, embeddings, model_feature_names)
+                        with st.spinner("Menghasilkan penjelasan SHAP..."):
+                            shap_values_obj = explainer(feat_vec_shap.to_frame().T)
+                        
+                        summary_text = summarize_shap_values_new(shap_values_obj[0], feat_vec_shap, model.predict)
+                        st.info(summary_text)
+                        
+                        fig_waterfall, ax_waterfall = plt.subplots(figsize=(10, 6))
+                        shap.plots.waterfall(shap_values_obj[0], show=False)
+                        plt.tight_layout()
+                        st.pyplot(fig_waterfall)
+                        plt.close(fig_waterfall)
 
-            else:
-                st.warning("SHAP Explainer tidak tersedia. Tidak dapat menampilkan penjelasan.")
+                    else:
+                        st.warning("SHAP Explainer tidak tersedia. Tidak dapat menampilkan penjelasan.")
