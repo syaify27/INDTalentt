@@ -13,7 +13,7 @@ import matplotlib.patches as mpatches
 
 # --- Konfigurasi Halaman Streamlit ---
 st.set_page_config(
-    page_title="Sistem Manajemen Talenta ASN",
+    page_title="INDTalent",
     page_icon="💼",
     layout="wide",
     initial_sidebar_state="expanded",
