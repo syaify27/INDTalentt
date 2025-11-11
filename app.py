@@ -166,7 +166,7 @@ def generate_ai_explanation(_api_key, asn_data, job_data, score, _shap_values):
         return f"Gagal menghasilkan analisis AI. Pastikan kunci API Anda valid dan tersedia di Streamlit Secrets. Error: {e}"
 
 # --- Memuat Data --- 
-model, le_pendidikan, df_asn, df_jab, embeddings, explainer, model_feature_names = load_all_artifacts()
+model_xgb, le_pendidikan, df_asn, df_jab, embeddings, explainer, model_feature_names = load_all_artifacts()
 
 # --- Sidebar --- 
 with st.sidebar:
@@ -208,7 +208,7 @@ def run_analysis(mode):
     # Kalkulasi skor
     with st.spinner(f'Menghitung skor untuk semua {df_target.shape[0]} item...'):
         args = {id_primary_col: selected_id_primary}
-        results = [dict(args, **{id_secondary_col: target_id, 'Job Fit Score': round(model.predict(build_feature_vector(asn_id=args.get('id_asn', target_id), job_id=args.get('id_jabatan', target_id), df_asn=df_asn, df_jab=df_jab, le_pend=le_pendidikan, emb_dict=embeddings, model_feat_names=model_feature_names).to_frame().T)[0], 3)}) for target_id in df_target[id_secondary_col]]
+        results = [dict(args, **{id_secondary_col: target_id, 'Job Fit Score': round(model_xgb.predict(build_feature_vector(asn_id=args.get('id_asn', target_id), job_id=args.get('id_jabatan', target_id), df_asn=df_asn, df_jab=df_jab, le_pend=le_pendidikan, emb_dict=embeddings, model_feat_names=model_feature_names).to_frame().T)[0], 3)}) for target_id in df_target[id_secondary_col]]
         df_ranking = pd.DataFrame(results).sort_values(by="Job Fit Score", ascending=False).reset_index(drop=True)
         df_ranking.index += 1
         if mode == "Peringkat Kandidat": df_ranking['Nama Kandidat'] = df_ranking['id_asn'].apply(lambda x: f"ASN {x.split('ASN')[-1].lstrip('0')}")
