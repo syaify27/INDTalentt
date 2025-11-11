@@ -120,7 +120,7 @@ def create_radar_chart(labels, asn_values, job_values, title):
 def generate_ai_explanation(_api_key, asn_data, job_data, score, _shap_values):
     try:
         genai.configure(api_key=_api_key)
-        model = genai.GenerativeModel('gemini-2.5-flash"')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
         shap_summary = []
         for i in range(min(5, len(_shap_values.values))):
