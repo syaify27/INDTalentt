@@ -11,7 +11,7 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from gensim.models import Word2Vec # Digunakan untuk tipe, bukan load model utuh
 
 # --- Konfigurasi Streamlit ---
-st.set_page_config(layout="wide", page_title="Talent Management App")
+st.set_page_config(layout="wide", page_title="INDTalent")
 
 # --- Direktori Artifacts ---
 ARTIFACT_DIR = Path("artifacts")
@@ -172,7 +172,7 @@ def build_feature_vector(asn_id, job_id, df_asn_data, df_jab_data, le_pendidikan
     return feature_vector
 
 # --- Aplikasi Streamlit ---
-st.title("🚀 Aplikasi Manajemen Talenta ASN")
+st.title("🚀 iNDTalent-Indonesia Digital Talent Management")
 st.markdown("""
 Aplikasi ini membantu dalam melihat ranking kandidat untuk suatu jabatan dan merekomendasikan jabatan untuk seorang kandidat, 
 dilengkapi dengan penjelasan faktor-faktor penentu menggunakan SHAP.
