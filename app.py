@@ -30,7 +30,8 @@ st.markdown("""
     [data-testid="stSidebar"] h1, 
     [data-testid="stSidebar"] .st-emotion-cache-17l2y9t, 
     [data-testid="stSidebar"] .st-caption,
-    [data-testid="stSidebar"] .st-info {
+    [data-testid="stSidebar"] .st-info,
+    [data-testid="stSidebar"] .st-warning {
         color: #FFFFFF;
     }
     
@@ -49,11 +50,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Pemuatan Artefak (dengan Caching) ---
-ARTIFACT_DIR = Path("artifacts")
-if not ARTIFACT_DIR.exists():
-    st.error(f"Direktori 'artifacts' tidak ditemukan. Pastikan folder tersebut berada di direktori root aplikasi.")
-    st.stop()
-
 @st.cache_resource
 def load_all_artifacts():
     try:
@@ -76,6 +72,11 @@ def load_all_artifacts():
     except FileNotFoundError as e:
         st.error(f"File artifact tidak ditemukan: {e}. Periksa kelengkapan file.")
         st.stop()
+
+ARTIFACT_DIR = Path("artifacts")
+if not ARTIFACT_DIR.exists():
+    st.error(f"Direktori 'artifacts' tidak ditemukan. Pastikan folder tersebut berada di direktori root aplikasi.")
+    st.stop()
 
 # --- Fungsi Helper ---
 def build_feature_vector(asn_id, job_id, df_asn, df_jab, le_pend, emb_dict, model_feat_names):
@@ -116,16 +117,16 @@ def create_radar_chart(labels, asn_values, job_values, title):
     return fig
 
 @st.cache_data(show_spinner=False)
-def generate_ai_explanation(_api_key, asn_data, job_data, score, shap_values):
+def generate_ai_explanation(_api_key, asn_data, job_data, score, _shap_values):
     try:
         genai.configure(api_key=_api_key)
         model = genai.GenerativeModel('gemini-1.5-flash-latest')
         
         shap_summary = []
-        for i in range(min(5, len(shap_values.values))):
-            feature_name = shap_values.feature_names[i]
-            shap_val = shap_values.values[i]
-            data_val = shap_values.data[i]
+        for i in range(min(5, len(_shap_values.values))):
+            feature_name = _shap_values.feature_names[i]
+            shap_val = _shap_values.values[i]
+            data_val = _shap_values.data[i]
             impact = "meningkatkan" if shap_val > 0 else "menurunkan"
             shap_summary.append(f"- **{feature_name.replace('_', ' ').title()}** (nilai: {data_val:.2f}): Berkontribusi {impact} skor.")
         shap_text = "\n".join(shap_summary)
@@ -245,13 +246,16 @@ def run_analysis(mode):
                 shap_values = explainer(feat_vec.to_frame().T)
                 fig_waterfall, _ = plt.subplots(); shap.plots.waterfall(shap_values[0], max_display=8, show=False)
                 fig_waterfall.tight_layout(); st.pyplot(fig_waterfall, use_container_width=True); plt.close(fig_waterfall)
-            else: st.warning("SHAP Explainer tidak tersedia.")
+            else: 
+                shap_values = None # Pastikan shap_values ada meskipun explainer gagal
+                st.warning("SHAP Explainer tidak tersedia.")
 
-        if gemini_api_key:
+        if gemini_api_key and shap_values is not None:
             st.markdown("--- ")
             st.subheader("🤖 Analisis Komprehensif oleh AI")
-            ai_explanation = generate_ai_explanation(gemini_api_key, asn_row, job_row, score, shap_values[0])
-            st.markdown(ai_explanation)
+            with st.spinner("Gemini sedang menganalisis data, mohon tunggu..."):
+                ai_explanation = generate_ai_explanation(gemini_api_key, asn_row, job_row, score, shap_values[0])
+                st.markdown(ai_explanation)
 
 # --- Menjalankan Aplikasi --- 
 run_analysis(action)
