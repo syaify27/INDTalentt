@@ -120,7 +120,7 @@ def create_radar_chart(labels, asn_values, job_values, title):
 def generate_ai_explanation(_api_key, asn_data, job_data, score, _shap_values):
     try:
         genai.configure(api_key=_api_key)
-        model = genai.GenerativeModel('gemini-2.5-flash') # PERBAIKAN DI SINI
+        model = genai.GenerativeModel('gemini-1.5-flash-latest') # SEMENTARA UNTUK DEBUGGING
         
         shap_summary = []
         for i in range(min(5, len(_shap_values.values))):
@@ -192,7 +192,7 @@ st.markdown("--- ")
 # --- Logika Inti Aplikasi ---
 def run_analysis(mode):
     # Logika disatukan untuk efisiensi
-    if mode == "Peringkat Kandidat":
+    if mode == "Peringat Kandidat":
         st.subheader("🏅 Peringkat Kandidat untuk Jabatan")
         with st.container(border=True):
             selected_id_primary = st.selectbox("**Pilih Jabatan Target:**", df_jab['id_jabatan'].unique(), format_func=lambda x: f"{x} - {df_jab[df_jab.id_jabatan == x]['nama_jabatan'].iloc[0]}")
