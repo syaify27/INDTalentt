@@ -1,15 +1,11 @@
-# Python UV Starter
+*INDTalent* Indonesia Digital Talent Management 
+deployment : https://indtalentt.streamlit.app/
+https://ind-talent.vercel.app/
 
-This is a simple Python [uv](https://docs.astral.uv) starter in Firebase Studio.
+model training script : https://colab.research.google.com/drive/1Rn4EPhwL74Hda_HQKJY-GdRUV6wGnuYi?usp=sharing
+see TRAINED MODEL : /artifact/
 
-## Running
+by *SIKECE*
 
-```
-uv run main.py
-```
 
-## Add dependencies
 
-```
-uv add ruff
-```
