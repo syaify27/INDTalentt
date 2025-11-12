@@ -120,7 +120,7 @@ def create_radar_chart(labels, asn_values, job_values, title):
 def generate_ai_explanation(_api_key, asn_data, job_data, score, _shap_values):
     try:
         genai.configure(api_key=_api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash-latest') # SEMENTARA UNTUK DEBUGGING
+        model = genai.GenerativeModel('gemini-1.5-flash-latest')
         
         shap_summary = []
         for i in range(min(5, len(_shap_values.values))):
@@ -174,7 +174,14 @@ with st.sidebar:
     st.caption("Indonesia Digital Talent Management")
     st.markdown("--- ")
     
-    gemini_api_key = st.secrets.get("GEMINI_API_KEY")
+    st.warning("Untuk sementara, masukkan kunci API jika fitur AI gagal.")
+    manual_api_key = st.text_input("Masukkan Kunci API Gemini di sini", type="password", help="Jika ini diisi, nilai dari secret akan diabaikan.")
+
+    gemini_api_key_from_secrets = st.secrets.get("GEMINI_API_KEY")
+
+    # Prioritaskan kunci yang dimasukkan manual
+    gemini_api_key = manual_api_key if manual_api_key else gemini_api_key_from_secrets
+
     if not gemini_api_key:
         st.warning("Kunci API Gemini tidak ditemukan. Fitur Analisis AI tidak akan aktif.")
 
@@ -192,7 +199,7 @@ st.markdown("--- ")
 # --- Logika Inti Aplikasi ---
 def run_analysis(mode):
     # Logika disatukan untuk efisiensi
-    if mode == "Peringat Kandidat":
+    if mode == "Peringkat Kandidat":
         st.subheader("🏅 Peringkat Kandidat untuk Jabatan")
         with st.container(border=True):
             selected_id_primary = st.selectbox("**Pilih Jabatan Target:**", df_jab['id_jabatan'].unique(), format_func=lambda x: f"{x} - {df_jab[df_jab.id_jabatan == x]['nama_jabatan'].iloc[0]}")
